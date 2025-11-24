@@ -1,0 +1,14 @@
+services:
+  app:
+    build: ./app
+    image: de-portfolio-project_app:latest
+    container_name: my_app_container
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/usr/src/app
+    networks:
+      - data-engineering-net
+networks:
+  data-engineering-net:
+    name: data-engineering-net
