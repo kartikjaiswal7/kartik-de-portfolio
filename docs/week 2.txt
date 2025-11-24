@@ -1,0 +1,148 @@
+Week 2: Setting Up & Understanding Airflow — Implementation Guide
+
+Goal
+- Get a stable local Airflow instance running with the official compose file and add a simple "Hello World" DAG.
+
+Prerequisites
+- Docker (Docker Desktop) installed and running.
+- curl (or PowerShell) available. If on Windows, WSL2 is recommended for UID handling.
+
+Step-by-step implementation
+
+1) Change to project root
+- Open terminal or PowerShell and:
+  cd "c:\Users\hp\Desktop\kartik-cdp\de-portfolio-project"
+
+2) Download the official docker-compose file
+- WSL/Linux/macOS:
+  curl -LfO "https://airflow.apache.org/docs/apache-airflow/stable/docker-compose.yaml"
+- PowerShell (Windows):
+  Invoke-WebRequest -Uri "https://airflow.apache.org/docs/apache-airflow/stable/docker-compose.yaml" -OutFile "docker-compose.yaml"
+
+3) Create required directories
+- WSL/Linux/macOS:
+  mkdir -p ./dags ./logs ./plugins ./config
+- PowerShell:
+  New-Item -ItemType Directory -Force -Path .\dags,.\logs,.\plugins,.\config
+
+4) Create the .env file with AIRFLOW_UID
+- WSL/Linux/macOS:
+  echo "AIRFLOW_UID=$(id -u)" > .env
+- PowerShell (if you have WSL available):
+  wsl sh -c 'echo "AIRFLOW_UID=$(id -u)" > /mnt/c/Users/hp/Desktop/kartik-cdp/de-portfolio-project/.env'
+- PowerShell (no WSL): use a fallback UID (common default) — set to 50000:
+  "AIRFLOW_UID=50000" | Out-File -Encoding ASCII .env
+Note: Using WSL to get the correct UID is preferred. If using Docker Desktop on Windows native, 50000 is a safe fallback.
+
+5) Start Airflow
+- From project root:
+  docker-compose -f docker-compose.yaml up -d
+- To view logs:
+  docker-compose -f docker-compose.yaml logs -f webserver
+
+6) Default web UI
+- Open: http://localhost:8080
+- Default credentials: username: airflow  password: airflow
+
+7) Add a sample DAG (create file dags/hello_world_dag.py)
+- Copy the following DAG into dags/hello_world_dag.py (see sample below).
+
+Hello World DAG (Python)
+```python
+# filepath: dags/hello_world_dag.py
+from __future__ import annotations
+import pendulum
+from airflow import DAG
+from airflow.operators.bash import BashOperator
+
+with DAG(
+    dag_id="hello_world_dag",
+    start_date=pendulum.datetime(2023, 1, 1, tz="UTC"),
+    schedule=None,
+    catchup=False,
+    tags=["example"],
+) as dag:
+    task1 = BashOperator(task_id="say_hello", bash_command="echo 'Hello from Airflow!'")
+    task2 = BashOperator(task_id="show_date", bash_command="date")
+    task1 >> task2
+```
+
+8) Verify
+- Wait ~30–60s for webserver to register the DAG.
+- In the UI: enable the DAG, trigger it, and check task logs.
+
+Can't reach the UI? (diagnose & fix)
+- Reproduce the error:
+  - From host: curl -v http://localhost:8080
+  - From WSL: curl -v http://localhost:8080
+  - Note browser error (connection refused, timed out, DNS error).
+
+- Check containers and status:
+  - docker-compose -f docker-compose.yaml ps
+  - docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+
+- Inspect webserver logs:
+  - docker-compose -f docker-compose.yaml logs --tail=200 webserver
+  - docker-compose -f docker-compose.yaml logs -f webserver
+
+- Check port binding / conflicts:
+  - Windows PowerShell: netstat -ano | findstr :8080
+  - WSL/Linux: ss -ltnp | grep 8080
+  - If another process is using 8080, stop it or change the port mapping in docker-compose.yaml.
+
+- Test from inside the container:
+  - docker-compose exec webserver curl -sS http://localhost:8080 || docker exec -it <webserver_container> curl -sS http://127.0.0.1:8080
+
+- Common fixes:
+  - Restart services: docker-compose -f docker-compose.yaml down && docker-compose -f docker-compose.yaml up -d
+  - Recreate after code changes: docker-compose -f docker-compose.yaml up --build -d
+  - Permissions (if webserver exits with permission errors): ensure .env has correct AIRFLOW_UID (use WSL id -u) and set permissions:
+    sudo chown -R $(id -u):$(id -g) ./dags ./logs ./plugins
+  - Windows specifics: ensure Docker Desktop is running and WSL2 integration is enabled; try accessing from both Windows browser and a WSL curl.
+  - Firewall: temporarily disable or allow inbound 8080 to test.
+
+- When to collect logs for help:
+  - docker-compose -f docker-compose.yaml ps
+  - docker-compose -f docker-compose.yaml logs --tail=200 webserver
+  - docker ps -a
+  - netstat/ss output for :8080
+
+Optional helper scripts (copy to files if you want automation)
+- start-airflow.sh (WSL/Linux/macOS)
+```bash
+# filepath: scripts/start-airflow.sh
+#!/usr/bin/env bash
+set -e
+PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$PROJECT_ROOT"
+curl -LfO "https://airflow.apache.org/docs/apache-airflow/stable/docker-compose.yaml"
+mkdir -p ./dags ./logs ./plugins ./config
+echo "AIRFLOW_UID=$(id -u)" > .env
+docker-compose -f docker-compose.yaml up -d
+```
+
+- start-airflow.ps1 (PowerShell)
+```powershell
+# filepath: scripts/start-airflow.ps1
+$proj = Resolve-Path .
+Invoke-WebRequest "https://airflow.apache.org/docs/apache-airflow/stable/docker-compose.yaml" -OutFile "docker-compose.yaml"
+New-Item -ItemType Directory -Force -Path .\dags,.\logs,.\plugins,.\config | Out-Null
+if (Get-Command wsl -ErrorAction SilentlyContinue) {
+  wsl sh -c 'echo "AIRFLOW_UID=$(id -u)" > /mnt/c/Users/hp/Desktop/kartik-cdp/de-portfolio-project/.env'
+} else {
+  "AIRFLOW_UID=50000" | Out-File -Encoding ASCII .env
+}
+docker-compose -f docker-compose.yaml up -d
+```
+
+Troubleshooting tips
+- If DAG doesn't appear: confirm file encoding is UTF-8 and filename ends with .py and is in ./dags.
+- If permission errors on volumes: ensure AIRFLOW_UID in .env matches the container's expected UID (use WSL id -u when possible).
+- To reset: docker-compose -f docker-compose.yaml down --volumes --remove-orphans and remove .env if needed.
+
+Deliverable
+- Official docker-compose.yaml in project root.
+- .env with AIRFLOW_UID.
+- Directories: dags, logs, plugins, config.
+- Sample DAG at dags/hello_world_dag.py.
+- Optional scripts to automate the steps.
