@@ -1,0 +1,343 @@
+Week 1 — Local development setup with Docker
+
+Objective:
+- Learn core Docker commands and create a minimal Python development environment using Docker Desktop and docker-compose.
+- Create a repo with docker-compose.yml and an app/ folder containing a Dockerfile that builds a Python container with the local code mounted.
+
+Prerequisites:
+- Docker Desktop installed and running.
+- Git installed (optional but recommended).
+- Code editor (VS Code, etc).
+
+Step-by-step tasks:
+1) Install Docker Desktop
+   - Download and install for your OS from https://www.docker.com/products/docker-desktop
+   - Start Docker Desktop and confirm it is running.
+
+2) Initialize project
+   - Create project directory and initialize git:
+     mkdir "c:\Users\hp\Desktop\kartik-cdp\de-portfolio-project"
+     cd "c:\Users\hp\Desktop\kartik-cdp\de-portfolio-project"
+     git init
+
+3) Learn and run core Docker commands (practice)
+   - Pull an image:
+     docker pull python:3.9-slim
+   - List local images:
+     docker images
+   - Run a background container (keeps running):
+     docker run --name my-python-container -d python:3.9-slim tail -f /dev/null
+   - List running containers:
+     docker ps
+   - Get a shell inside the container:
+     docker exec -it my-python-container /bin/bash
+   - View logs:
+     docker logs my-python-container
+   - Stop and remove the container:
+     docker stop my-python-container
+     docker rm my-python-container
+
+4) Create a Docker network for service name resolution
+   - Create persistent network:
+     docker network create data-engineering-net
+
+5) Create docker-compose.yml and app folder
+   - Create an app/ directory:
+     mkdir app
+   - Example docker-compose.yml (place at project root):
+     version: '3.8'
+     services:
+       app:
+         build: ./app
+         container_name: my_app_container
+         volumes:
+           - ./app:/usr/src/app
+         networks:
+           - data-engineering-net
+     networks:
+       data-engineering-net:
+         external: true
+   - Note: If you prefer docker-compose to create the network, replace 'external: true' with a named or default network stanza.
+
+6) Create app/Dockerfile
+   - Minimal Dockerfile (place at app/Dockerfile):
+     FROM python:3.9-slim
+     WORKDIR /usr/src/app
+     # (Add COPY or requirements install if/when needed)
+   - After files are in place, build and run:
+     docker-compose up --build
+
+Example minimal files (copy into your project)
+- docker-compose.yml:
+  version: '3.8'
+  services:
+    app:
+      build: ./app
+      container_name: my_app_container
+      volumes:
+        - ./app:/usr/src/app
+      networks:
+        - data-engineering-net
+  networks:
+    data-engineering-net:
+      external: true
+
+- app/Dockerfile:
+  FROM python:3.9-slim
+  WORKDIR /usr/src/app
+
+Deliverable:
+- A Git repository at c:\Users\hp\Desktop\kartik-cdp\de-portfolio-project (or similar) containing:
+  - docker-compose.yml
+  - app/Dockerfile
+  - app/ (mounted into container)
+  - README or commit showing the setup steps
+
+Completion checklist (mark when done):
+[ ] Docker Desktop installed and running
+[ ] Project directory created and git initialized
+[ ] Practiced listed Docker commands
+[ ] Docker network created (data-engineering-net)
+[ ] docker-compose.yml added at project root
+[ ] app/Dockerfile added and app/ directory created
+[ ] docker-compose up --build completes and container is running
+
+Post-completion — brief explanation template (fill after finishing)
+- What I did:
+  - (Short summary of steps completed)
+- Commands run and outputs (evidence):
+  - (Paste or reference key command outputs, e.g., docker images, docker ps, docker-compose logs)
+- Files created/modified:
+  - docker-compose.yml
+  - app/Dockerfile
+  - app/ (files if any)
+- Problems encountered and resolutions:
+  - (Any errors and how you fixed them)
+- Lessons learned:
+  - (Short bullet points)
+- Next steps:
+  - (E.g., add a simple Python app, install dependencies, add tests, CI integration)
+
+Notes and tips:
+- Use docker exec -it <container> /bin/bash to inspect the running container.
+- If the network already exists, docker network create will return an error; that's safe to ignore.
+- If you want docker-compose to manage the network automatically, remove the external network stanza and let compose create it.
+
+Local execution — run these commands on your Windows machine (PowerShell/CMD/WSL)
+1) Install Docker Desktop
+   - Download and run the installer: https://www.docker.com/products/docker-desktop
+   - Start Docker Desktop and wait until it shows "Docker is running".
+
+2) Create project and files (run in PowerShell)
+   cd "c:\Users\hp\Desktop\kartik-cdp"
+   mkdir de-portfolio-project
+   cd de-portfolio-project
+   mkdir app
+   # save the docker-compose.yml and app/Dockerfile and app/index.html (index.html already present)
+
+3) (Optional) create network (only if you want an external named network)
+   docker network create data-engineering-net
+
+4) Build and run with compose (recommended command — use 'docker compose' if Docker v2, or 'docker-compose' if v1)
+   docker compose up --build -d
+
+5) Verify
+   docker ps
+   # expected line includes: my_app_container   your-image   "python -m http.server 8000"   Up X seconds
+   curl http://localhost:8000
+   # expected: contents of index.html (HTML output)
+   docker compose logs -f
+   docker exec -it my_app_container /bin/bash
+
+6) Stop and cleanup
+   docker compose down
+   # if you created the external network manually and want to remove it:
+   docker network rm data-engineering-net
+
+Quick troubleshooting
+- "Docker not running": start Docker Desktop, wait for it to initialize.
+- "port 8000 already in use": change the ports mapping in docker-compose.yml (e.g., "8001:8000").
+- Permission errors on Windows: run PowerShell/CMD as Administrator.
+- Use 'docker compose' (without hyphen) if docker-compose command is not available.
+
+Local — step-wise commands (copy/paste into PowerShell or CMD)
+
+# 1. Install Docker Desktop (manual)
+# Download and run: https://www.docker.com/products/docker-desktop
+# Start Docker Desktop and wait until it reports "Docker is running".
+
+# 2. Create project skeleton
+cd "c:\Users\hp\Desktop\kartik-cdp"
+mkdir de-portfolio-project
+cd de-portfolio-project
+mkdir app
+
+# 3. Save files into project (create the following files: docker-compose.yml, app\Dockerfile, app\index.html)
+# You can create them with your editor or with PowerShell + here-strings.
+
+# 4. (Optional) create an external network
+docker network create data-engineering-net
+
+# 5. Build and run (use 'docker compose' if available)
+docker compose up --build -d
+
+# 6. Verify
+docker ps
+curl http://localhost:8000
+docker compose logs -f
+docker exec -it my_app_container /bin/bash
+
+# 7. Stop and cleanup
+docker compose down
+# If you created external network manually and want to remove it:
+docker network rm data-engineering-net
+
+Troubleshooting — "unable to get image ... unexpected end of JSON input"
+
+Follow these commands in PowerShell/CMD (run as Administrator if you hit permissions issues):
+
+1) Stop compose and remove containers
+docker compose down
+
+2) List images and look for the problematic name
+docker images | findstr de-portfolio-project
+
+3) Remove the corrupted image (replace name if different)
+docker image rm de-portfolio-project_app:latest
+
+4) If remove fails or you suspect cache corruption, prune builders and unused data
+docker builder prune --force
+docker image prune --force
+docker system prune --all --force
+
+5) Rebuild without cache and run
+docker compose build --no-cache
+docker compose up --build -d
+
+6) If build fails, view build output / logs
+docker compose build   # runs in foreground with logs
+docker compose logs --no-log-prefix --timestamps
+
+7) If you still see JSON errors, collect diagnostics and share:
+docker version
+docker info
+docker images --digests
+docker compose config
+
+Notes:
+- The initial warning "the attribute `version` is obsolete" is fixed by removing the top-level version entry from docker-compose.yml.
+- Adding an explicit image name in compose makes it straightforward to identify and remove the problematic image.
+- If port conflicts occur, change the host port mapping (e.g., "8001:8000").
+
+Run these commands now (PowerShell/CMD)
+
+# 0) Make sure Docker Desktop is running and healthy.
+
+# 1) Stop compose and remove containers
+cd "c:\Users\hp\Desktop\kartik-cdp\de-portfolio-project"
+docker compose down
+
+# 2) List images to find any corrupted or partially-created images
+docker images
+# or filter on the explicit image name
+docker images | findstr de-portfolio-project
+
+# 3) Remove the problematic image (use IMAGE ID or name shown by docker images)
+docker image rm de-portfolio-project_app:latest
+# if it fails, use the image ID:
+# docker image rm <IMAGE_ID>
+
+# 4) Prune builder cache and unused data (optional but recommended if corruption suspected)
+docker builder prune --force
+docker image prune --force
+docker system prune --all --force
+
+# 5) Validate docker-compose file
+docker compose config
+
+# 6) Rebuild without cache and start
+docker compose build --no-cache
+docker compose up --build -d
+
+# 7) Verify
+docker ps
+curl http://localhost:8000
+docker compose logs -f
+
+# 8) Cleanup when done
+docker compose down
+
+If you still see "unexpected end of JSON input", run these diagnostics and paste the outputs:
+docker version
+docker info
+docker images --digests
+docker compose config
+docker compose build   # capture full build logs
+
+Next steps — run now (PowerShell/CMD in the project folder)
+
+cd "c:\Users\hp\Desktop\kartik-cdp\de-portfolio-project"
+
+# 1) Validate compose file
+docker compose config
+# Expected: merged config printed; no syntax errors.
+
+# 2) Build image (use no-cache to avoid previously corrupted layers)
+docker compose build --no-cache
+# Expected: build steps complete without JSON errors.
+
+# 3) Start in detached mode
+docker compose up -d
+# Expected: containers start; 'docker compose ps' shows my_app_container Up.
+
+# 4) Verify service
+docker ps
+curl http://localhost:8000
+# Expected: HTML of app/index.html; open http://localhost:8000 in browser to confirm.
+
+# 5) Inspect logs or shell if needed
+docker compose logs -f
+docker exec -it my_app_container /bin/bash
+
+# 6) If you see "unexpected end of JSON input" or build errors:
+# a) Stop compose
+docker compose down
+# b) Remove the explicit image (use name or image ID)
+docker images | findstr de-portfolio-project
+docker image rm de-portfolio-project_app:latest
+# c) Prune builders and unused data
+docker builder prune --force
+docker image prune --force
+docker system prune --all --force
+# d) Rebuild and run
+docker compose build --no-cache
+docker compose up -d
+
+# 7) Cleanup when done
+docker compose down
+
+If any step fails, copy and paste the outputs of:
+- docker compose build (full logs)
+- docker images --digests
+- docker version
+- docker info
+so I can diagnose further.
+
+Repository name suggestions (kebab-case, descriptive)
+- kartik-de-portfolio
+- kartik-cdp-portfolio
+- de-portfolio-project
+- data-eng-portfolio
+- python-docker-setup
+- docker-local-dev
+- kartik-docker-setup
+- de-portfolio-docker
+- data-engineering-setup
+- sample-de-project
+
+Recommended: kartik-de-portfolio  # concise, includes your name and purpose
+
+Naming tips:
+- Use lowercase and hyphens.
+- Keep it short (2–3 words).
+- Prefer owner + purpose (e.g., <name>-de-portfolio).
